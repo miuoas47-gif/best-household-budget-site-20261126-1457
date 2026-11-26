@@ -1,154 +1,143 @@
-// Hearth Ledger — the Marlowe household's own November 2026 figures.
-// One household, one month, all in dollars. Every total the site shows is
-// computed from these rows, so the dashboard, budgets and report can never
-// disagree with each other.
+// Hearth & Ledger — the Alvarez household's own budget data.
+// One household, three months. Every figure on the site comes from here,
+// so the dashboard, the budget bars and the reports always agree.
 
 export const HOUSEHOLD = {
-  name: "The Marlowe household",
-  members: "Ana, Ben, Mia (9) and Leo (6)",
-  home: "A two-bedroom flat on Willow Court",
-  month: "November 2026",
-  monthLabel: "November 2026",
-  currency: "USD",
+  name: 'The Alvarez Household',
+  members: ['Mara', 'Jon', 'Sofia (9)', 'Leo (6)'],
+  home: 'A rented three-bedroom in Portland, Oregon',
+  payday: '1st and 15th of the month',
 };
 
 export const CATEGORIES = [
-  { id: "housing", label: "Housing", color: "#1f5c40" },
-  { id: "groceries", label: "Groceries", color: "#2f6f8f" },
-  { id: "utilities", label: "Utilities", color: "#d9a441" },
-  { id: "transport", label: "Transport", color: "#7a5c9e" },
-  { id: "dining", label: "Dining out", color: "#c96f3f" },
-  { id: "family", label: "Family fun", color: "#4a9a7d" },
-  { id: "kids", label: "Kids", color: "#b3402e" },
-  { id: "health", label: "Health", color: "#5b8c5a" },
-  { id: "home", label: "Home & garden", color: "#8a6d3b" },
-  { id: "everyday", label: "Everyday", color: "#6b7a8f" },
+  { id: 'housing', label: 'Housing', color: '#2f6f5e', note: 'Rent, renter insurance' },
+  { id: 'groceries', label: 'Groceries', color: '#7a9e3f', note: 'Weekly shop + market' },
+  { id: 'transport', label: 'Transport', color: '#3e7ca6', note: 'Fuel, bus passes, parking' },
+  { id: 'utilities', label: 'Utilities', color: '#c98a2e', note: 'Power, water, internet, phones' },
+  { id: 'dining', label: 'Dining out', color: '#b4552d', note: 'Takeaway + eating out' },
+  { id: 'entertainment', label: 'Entertainment', color: '#7d5ba6', note: 'Streaming, books, outings' },
+  { id: 'health', label: 'Health', color: '#4a9b8e', note: 'Pharmacy, dentist, glasses' },
+  { id: 'kids', label: 'Kids & school', color: '#d16a8a', note: 'School, clubs, clothes' },
+  { id: 'savings', label: 'Savings', color: '#2f6f5e', note: 'Emergency fund + goals' },
+  { id: 'misc', label: 'Everything else', color: '#8a8f98', note: 'Gifts, household bits' },
 ];
 
-export const INCOME = [
-  { id: "inc-1", date: "2026-11-01", source: "Salary — Ana (Northfield Clinic)", amount: 4200 },
-  { id: "inc-2", date: "2026-11-01", source: "Salary — Ben (Harbour Freight)", amount: 2350 },
-  { id: "inc-3", date: "2026-11-14", source: "Weekend market stall — Ben", amount: 300 },
-];
+// Monthly plan: income and what each category is allowed, per month.
+export const MONTHS = {
+  '2026-11': {
+    label: 'November 2026',
+    income: [
+      { source: 'Mara — salary (Nov 1)', amount: 2700 },
+      { source: 'Jon — salary (Nov 1)', amount: 2700 },
+      { source: 'Jon — weekend freelance', amount: 650 },
+      { source: 'Bank interest + refund', amount: 150 },
+    ],
+    plan: {
+      housing: 1850, groceries: 720, transport: 420, utilities: 310,
+      dining: 240, entertainment: 180, health: 200, kids: 260,
+      savings: 900, misc: 120,
+    },
+    spent: {
+      housing: 1850, groceries: 684, transport: 391, utilities: 287,
+      dining: 268, entertainment: 142, health: 165, kids: 233,
+      savings: 900, misc: 97,
+    },
+  },
+  '2026-10': {
+    label: 'October 2026',
+    income: [
+      { source: 'Mara — salary (Oct 1)', amount: 2700 },
+      { source: 'Jon — salary (Oct 1)', amount: 2700 },
+      { source: 'Jon — weekend freelance', amount: 480 },
+      { source: 'Bank interest + refund', amount: 90 },
+    ],
+    plan: {
+      housing: 1850, groceries: 700, transport: 420, utilities: 295,
+      dining: 240, entertainment: 180, health: 200, kids: 260,
+      savings: 850, misc: 120,
+    },
+    spent: {
+      housing: 1850, groceries: 711, transport: 402, utilities: 301,
+      dining: 251, entertainment: 176, health: 142, kids: 289,
+      savings: 850, misc: 118,
+    },
+  },
+  '2026-09': {
+    label: 'September 2026',
+    income: [
+      { source: 'Mara — salary (Sep 1)', amount: 2700 },
+      { source: 'Jon — salary (Sep 1)', amount: 2700 },
+      { source: 'Jon — weekend freelance', amount: 520 },
+      { source: 'Bank interest + refund', amount: 60 },
+    ],
+    plan: {
+      housing: 1850, groceries: 700, transport: 420, utilities: 280,
+      dining: 240, entertainment: 180, health: 200, kids: 340,
+      savings: 850, misc: 120,
+    },
+    spent: {
+      housing: 1850, groceries: 668, transport: 388, utilities: 276,
+      dining: 219, entertainment: 154, health: 231, kids: 347,
+      savings: 850, misc: 104,
+    },
+  },
+};
 
-// November spending so far (1–26 November). Amounts are what was actually paid.
+export const MONTH_ORDER = ['2026-09', '2026-10', '2026-11'];
+
+// Recent transactions for November. Shown newest first.
 export const TRANSACTIONS = [
-  { id: "t-01", date: "2026-11-01", payee: "Willow Court — monthly rent", category: "housing", amount: 1450.00 },
-  { id: "t-02", date: "2026-11-02", payee: "GreenMart — weekly shop", category: "groceries", amount: 128.40 },
-  { id: "t-03", date: "2026-11-02", payee: "School lunches — Mia & Leo", category: "kids", amount: 86.00 },
-  { id: "t-04", date: "2026-11-03", payee: "Metro monthly pass — Ana", category: "transport", amount: 92.00 },
-  { id: "t-05", date: "2026-11-03", payee: "Post office — parcel to Gran", category: "everyday", amount: 12.40 },
-  { id: "t-06", date: "2026-11-04", payee: "City Power & Light — electricity", category: "utilities", amount: 132.00 },
-  { id: "t-07", date: "2026-11-05", payee: "Petrol — Shell Lane garage", category: "transport", amount: 46.20 },
-  { id: "t-08", date: "2026-11-05", payee: "Pharmacy — cough syrup & plasters", category: "health", amount: 18.60 },
-  { id: "t-09", date: "2026-11-06", payee: "Pasta Palace — family dinner", category: "dining", amount: 58.40 },
-  { id: "t-10", date: "2026-11-07", payee: "GreenMart — weekly shop", category: "groceries", amount: 96.75 },
-  { id: "t-11", date: "2026-11-07", payee: "Hardware — light bulbs & hooks", category: "home", amount: 23.80 },
-  { id: "t-12", date: "2026-11-08", payee: "Cinema — Saturday matinee", category: "family", amount: 46.00 },
-  { id: "t-13", date: "2026-11-09", payee: "Corner Bakery — bread & rolls", category: "groceries", amount: 18.20 },
-  { id: "t-14", date: "2026-11-09", payee: "Swimming lessons — Mia & Leo", category: "kids", amount: 64.00 },
-  { id: "t-15", date: "2026-11-10", payee: "Coffee & cake — Mia's treat", category: "dining", amount: 24.60 },
-  { id: "t-16", date: "2026-11-10", payee: "Dentist check-up — Ana", category: "health", amount: 85.00 },
-  { id: "t-17", date: "2026-11-11", payee: "NorthNet — broadband", category: "utilities", amount: 68.00 },
-  { id: "t-18", date: "2026-11-12", payee: "Haircut — Ben", category: "everyday", amount: 28.00 },
-  { id: "t-19", date: "2026-11-12", payee: "Metro monthly pass — Ben", category: "transport", amount: 92.00 },
-  { id: "t-20", date: "2026-11-13", payee: "GreenMart — weekly shop", category: "groceries", amount: 142.60 },
-  { id: "t-21", date: "2026-11-13", payee: "Plant pots & soil", category: "home", amount: 31.20 },
-  { id: "t-22", date: "2026-11-14", payee: "City Water — quarterly bill", category: "utilities", amount: 54.30 },
-  { id: "t-23", date: "2026-11-14", payee: "Library books — donation box", category: "family", amount: 12.00 },
-  { id: "t-24", date: "2026-11-15", payee: "Farmers' market — veg & eggs", category: "groceries", amount: 34.50 },
-  { id: "t-25", date: "2026-11-15", payee: "New shoes — Leo", category: "kids", amount: 52.50 },
-  { id: "t-26", date: "2026-11-16", payee: "Takeaway noodles — Friday night", category: "dining", amount: 42.75 },
-  { id: "t-27", date: "2026-11-17", payee: "Petrol — Shell Lane garage", category: "transport", amount: 41.50 },
-  { id: "t-28", date: "2026-11-17", payee: "Stationery & birthday cards", category: "everyday", amount: 16.75 },
-  { id: "t-29", date: "2026-11-18", payee: "After-school club — Mia", category: "kids", amount: 45.00 },
-  { id: "t-30", date: "2026-11-19", payee: "GreenMart — weekly shop", category: "groceries", amount: 118.90 },
-  { id: "t-31", date: "2026-11-19", payee: "Pharmacy — vitamins", category: "health", amount: 24.30 },
-  { id: "t-32", date: "2026-11-19", payee: "Curtain rail repair", category: "home", amount: 42.00 },
-  { id: "t-33", date: "2026-11-20", payee: "Mobile — Ana & Ben", category: "utilities", amount: 96.00 },
-  { id: "t-34", date: "2026-11-21", payee: "Corner Bakery — bread & rolls", category: "groceries", amount: 22.40 },
-  { id: "t-35", date: "2026-11-21", payee: "Bowling — family afternoon", category: "family", amount: 58.50 },
-  { id: "t-36", date: "2026-11-22", payee: "Lunch — Ben's work day", category: "dining", amount: 18.90 },
-  { id: "t-37", date: "2026-11-23", payee: "Bus top-up — Leo's travel card", category: "transport", amount: 24.00 },
-  { id: "t-38", date: "2026-11-23", payee: "Art supplies — Mia", category: "kids", amount: 28.75 },
-  { id: "t-39", date: "2026-11-24", payee: "GreenMart — weekly shop", category: "groceries", amount: 131.85 },
-  { id: "t-40", date: "2026-11-24", payee: "Gym — monthly membership", category: "health", amount: 45.00 },
-  { id: "t-41", date: "2026-11-24", payee: "Board game — Leo's pick", category: "family", amount: 28.40 },
-  { id: "t-42", date: "2026-11-25", payee: "Butcher & Deli — Sunday roast", category: "groceries", amount: 48.00 },
-  { id: "t-43", date: "2026-11-25", payee: "Pizza night — the whole family", category: "dining", amount: 64.20 },
-  { id: "t-44", date: "2026-11-26", payee: "Dry cleaning — Ben's suit", category: "everyday", amount: 22.00 },
-];
-
-// What the household planned to spend in each category this month.
-export const BUDGETS = [
-  { category: "housing", amount: 1450 },
-  { category: "groceries", amount: 900 },
-  { category: "utilities", amount: 380 },
-  { category: "transport", amount: 380 },
-  { category: "dining", amount: 260 },
-  { category: "family", amount: 300 },
-  { category: "kids", amount: 350 },
-  { category: "health", amount: 200 },
-  { category: "home", amount: 180 },
-  { category: "everyday", amount: 150 },
-];
-
-export const GOALS = [
-  { id: "g-1", name: "Emergency fund", note: "Three months of rent and bills, kept apart so a broken boiler never becomes a crisis.", target: 8000, saved: 5240 },
-  { id: "g-2", name: "Family holiday", note: "A week by the sea next summer — train tickets, a cottage, and ice cream money.", target: 2400, saved: 1150 },
-  { id: "g-3", name: "New boiler", note: "The old one rattles every winter. A new one before next November.", target: 1800, saved: 640 },
-  { id: "g-4", name: "Kids' bikes", note: "Two bikes for Mia and Leo, so the school run can be a ride instead of a bus.", target: 520, saved: 310 },
+  { date: 'Nov 26', payee: 'Green Mart groceries', category: 'groceries', amount: 86.40, note: 'Weekly shop' },
+  { date: 'Nov 24', payee: 'City Power & Light', category: 'utilities', amount: 142.18, note: 'Electric bill' },
+  { date: 'Nov 23', payee: 'Corner Taqueria', category: 'dining', amount: 34.50, note: 'Takeaway for four' },
+  { date: 'Nov 22', payee: 'Shell — fuel', category: 'transport', amount: 48.20, note: 'Tank fill-up' },
+  { date: 'Nov 21', payee: 'Green Mart groceries', category: 'groceries', amount: 112.75, note: 'Weekly shop + pantry' },
+  { date: 'Nov 20', payee: 'Riverside Cinema', category: 'entertainment', amount: 46.00, note: 'Family film night' },
+  { date: 'Nov 19', payee: 'Bright Smiles Dentist', category: 'health', amount: 85.00, note: "Leo's check-up" },
+  { date: 'Nov 18', payee: 'Northwest Internet', category: 'utilities', amount: 79.00, note: 'Monthly broadband' },
+  { date: 'Nov 17', payee: 'Green Mart groceries', category: 'groceries', amount: 94.10, note: 'Weekly shop' },
+  { date: 'Nov 15', payee: 'Jon — salary in', category: 'income', amount: 2700.00, note: 'Payday' },
+  { date: 'Nov 15', payee: 'Mara — salary in', category: 'income', amount: 2700.00, note: 'Payday' },
+  { date: 'Nov 14', payee: 'Bus passes (x2)', category: 'transport', amount: 100.00, note: 'Monthly passes' },
+  { date: 'Nov 12', payee: 'Sofia — ballet term', category: 'kids', amount: 120.00, note: 'Autumn term fees' },
+  { date: 'Nov 10', payee: 'Bookshop — Sofia', category: 'kids', amount: 28.40, note: 'Two chapter books' },
+  { date: 'Nov 8', payee: 'Green Mart groceries', category: 'groceries', amount: 101.55, note: 'Weekly shop' },
+  { date: 'Nov 7', payee: 'Pasta House', category: 'dining', amount: 58.75, note: 'Friday dinner out' },
+  { date: 'Nov 5', payee: 'Pharmacy', category: 'health', amount: 32.60, note: 'Prescriptions' },
+  { date: 'Nov 3', payee: 'Water bill', category: 'utilities', amount: 66.00, note: 'Quarterly water' },
+  { date: 'Nov 1', payee: 'Rent — Maple St', category: 'housing', amount: 1780.00, note: 'November rent' },
+  { date: 'Nov 1', payee: 'Emergency fund', category: 'savings', amount: 900.00, note: 'Auto-transfer on payday' },
 ];
 
 export const BILLS = [
-  { id: "b-1", name: "Rent — Willow Court", amount: 1450.00, due: "2026-11-01", paid: true },
-  { id: "b-2", name: "Electricity — City Power & Light", amount: 132.00, due: "2026-11-12", paid: true },
-  { id: "b-3", name: "Broadband — NorthNet", amount: 68.00, due: "2026-11-15", paid: true },
-  { id: "b-4", name: "Water — City Water", amount: 54.30, due: "2026-11-18", paid: true },
-  { id: "b-5", name: "Mobile — Ana & Ben", amount: 96.00, due: "2026-11-20", paid: true },
-  { id: "b-6", name: "Gym — monthly membership", amount: 45.00, due: "2026-11-25", paid: true },
-  { id: "b-7", name: "Home insurance — annual, monthly part", amount: 187.00, due: "2026-11-28", paid: false },
-  { id: "b-8", name: "Streaming — films & shows", amount: 16.00, due: "2026-11-30", paid: false },
+  { name: 'Rent — Maple St', amount: 1780.00, due: 'Dec 1', status: 'scheduled', note: 'Auto-pay on the 1st' },
+  { name: 'City Power & Light', amount: 138.00, due: 'Dec 5', status: 'upcoming', note: 'Estimate, based on November' },
+  { name: 'Northwest Internet', amount: 79.00, due: 'Dec 8', status: 'upcoming', note: 'Same every month' },
+  { name: 'Mobile phones (x2)', amount: 96.00, due: 'Dec 12', status: 'upcoming', note: 'Mara + Jon' },
+  { name: 'Renter insurance', amount: 70.00, due: 'Dec 15', status: 'upcoming', note: 'Annual policy, monthly' },
+  { name: 'Water bill', amount: 66.00, due: 'Dec 18', status: 'upcoming', note: 'Quarterly — next one is January' },
+  { name: 'Streaming bundle', amount: 24.99, due: 'Dec 20', status: 'upcoming', note: 'Two services, one bill' },
+  { name: 'Ballet term — Sofia', amount: 120.00, due: 'Jan 10', status: 'upcoming', note: 'Winter term starts January' },
 ];
 
-// Whole-month spending for the last five months (November is computed live).
-export const MONTHLY_HISTORY = [
-  { month: "Jul", spent: 4180 },
-  { month: "Aug", spent: 4402 },
-  { month: "Sep", spent: 3976 },
-  { month: "Oct", spent: 4215 },
+export const GOALS = [
+  { id: 'emergency', name: 'Emergency fund', saved: 8400, target: 12000, note: 'Six months of rent and bills, for peace of mind.' },
+  { id: 'holiday', name: 'Summer holiday — coast', saved: 1250, target: 2000, note: 'A week by the sea in July, train + cottage.' },
+  { id: 'car', name: 'Replace the old car', saved: 2300, target: 6500, note: 'The 2012 hatchback is on its last legs.' },
+  { id: 'leo-bike', name: "Leo's birthday bike", saved: 85, target: 220, note: 'Birthday in February — a red one, he says.' },
 ];
 
-// --- Derived figures: everything the pages show comes from here. ---
+export const TIPS = [
+  { title: 'Dining is $28 over budget', body: 'Two takeaways a week added up. One home-cooked Friday a month brings it back under $240.' },
+  { title: 'Groceries are $36 under', body: 'Three weeks of meal planning beat the plan. That $36 can roll into the holiday fund.' },
+  { title: 'Savings rate is 14.5%', body: '$900 of $6,200 income went straight to savings on payday — before anything could be spent.' },
+  { title: 'Utilities are trending down', body: 'September $276, October $301, November $287. Shorter showers and LED bulbs are doing the work.' },
+];
 
-export function totalIncome() {
-  return INCOME.reduce((sum, row) => sum + row.amount, 0);
+export function money(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function totalSpent(transactions) {
-  return transactions.reduce((sum, row) => sum + row.amount, 0);
-}
-
-export function spentByCategory(transactions) {
-  const totals = new Map(CATEGORIES.map((c) => [c.id, 0]));
-  for (const row of transactions) {
-    totals.set(row.category, (totals.get(row.category) ?? 0) + row.amount);
-  }
-  return totals;
-}
-
-export function budgetFor(categoryId, budgets) {
-  return budgets.find((b) => b.category === categoryId)?.amount ?? 0;
-}
-
-export function totalBudgeted(budgets) {
-  return budgets.reduce((sum, b) => sum + b.amount, 0);
-}
-
-export function upcomingBills(bills) {
-  return bills.filter((b) => !b.paid).sort((a, b) => a.due.localeCompare(b.due));
-}
-
-export function paidBillsTotal(bills) {
-  return bills.filter((b) => b.paid).reduce((sum, b) => sum + b.amount, 0);
+export function money0(n) {
+  return '$' + Math.round(n).toLocaleString('en-US');
 }

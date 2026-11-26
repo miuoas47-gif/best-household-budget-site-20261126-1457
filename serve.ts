@@ -1,22 +1,60 @@
-// A tiny static server for looking at the site while building it.
-// Serves app/ at http://localhost:8080 (or --port <n>). Not part of the entry.
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
+// A tiny static server for app/ (Node 22, standard library only).
+// Run `node serve.ts` and open http://localhost:8080 — `--port <n>` picks
+// another port. Development convenience only, not part of the site itself.
+import { createReadStream, statSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { extname, join, normalize, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = join(fileURLToPath(new URL(".", import.meta.url)), "app");
-const port = Number(process.argv[process.argv.indexOf("--port") + 1] || 8080);
-const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".json": "application/json" };
+const root = resolve(fileURLToPath(new URL('./app', import.meta.url)));
+const args = process.argv.slice(2);
+const portIndex = args.indexOf('--port');
+const requested = portIndex === -1 ? 8080 : Number(args[portIndex + 1]);
+const port = Number.isInteger(requested) && requested > 0 && requested < 65536 ? requested : 8080;
 
-createServer(async (req, res) => {
-  const path = normalize(join(root, decodeURIComponent(req.url.split("?")[0]))).replace(/\/$/, "/index.html");
-  if (!path.startsWith(root)) { res.writeHead(403); res.end(); return; }
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
+
+createServer((request, response) => {
+  const url = new URL(request.url ?? '/', 'http://localhost');
+  let pathname: string;
   try {
-    const body = await readFile(path === root ? join(root, "index.html") : path);
-    res.writeHead(200, { "content-type": types[extname(path)] || "application/octet-stream" });
-    res.end(body);
+    pathname = decodeURIComponent(url.pathname);
   } catch {
-    res.writeHead(404); res.end("not found");
+    response.writeHead(400).end('bad request');
+    return;
   }
-}).listen(port, () => console.log(`Hearth Ledger at http://localhost:${port}`));
+  if (pathname.endsWith('/')) pathname += 'index.html';
+  const file = resolve(join(root, normalize(pathname)));
+  if (file !== root && !file.startsWith(root + sep)) {
+    response.writeHead(403).end('forbidden');
+    return;
+  }
+  let size: number;
+  try {
+    const stats = statSync(file);
+    if (!stats.isFile()) throw new Error('not a file');
+    size = stats.size;
+  } catch {
+    response.writeHead(404).end('not found');
+    return;
+  }
+  response.writeHead(200, {
+    'content-type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
+    'content-length': size,
+    'cache-control': 'no-store',
+  });
+  createReadStream(file).pipe(response);
+}).listen(port, '127.0.0.1', () => {
+  console.log(`app/ is on http://localhost:${port}`);
+});
