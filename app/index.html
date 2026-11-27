@@ -1,37 +1,38 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hearth &amp; Ledger — The Alvarez Household Budget</title>
-<meta name="description" content="A working household budget site for the Alvarez family: November dashboard, transaction ledger, budgets, bills, savings goals and a monthly report. Runs offline from static files.">
-<link rel="stylesheet" href="style.css">
-<script type="module" src="main.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alder Ledger — Household Budget for the Alder Family</title>
+  <meta name="description" content="Alder Ledger: the Alder household's working budget — November 2026 income, spending by category, bills, savings goals and a monthly report.">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="site">
-  <div class="brand">
-    <h1>Hearth <span>&amp;</span> Ledger</h1>
-    <p>The Alvarez household — Mara, Jon, Sofia (9) &amp; Leo (6), Portland, Oregon</p>
-  </div>
-  <nav aria-label="Sections">
-    <a href="#/" data-nav="dashboard">Dashboard</a>
-    <a href="#/transactions" data-nav="transactions">Transactions</a>
-    <a href="#/budgets" data-nav="budgets">Budgets</a>
-    <a href="#/bills" data-nav="bills">Bills</a>
-    <a href="#/goals" data-nav="goals">Goals</a>
-    <a href="#/reports" data-nav="reports">Reports</a>
-  </nav>
-</header>
-<main id="app" aria-live="polite">
-  <noscript><p>This budget site needs JavaScript to add up the household's figures.</p></noscript>
-</main>
-<footer class="site">
-  <div class="wrap">
-    Hearth &amp; Ledger keeps the Alvarez household's money in plain sight.
-    Every figure is computed from the household's own ledger, stored only in this browser.
-    No accounts, no tracking, no network requests — the whole site is these static files.
-  </div>
-</footer>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">Alder <span>Ledger</span></div>
+      <div class="household-tag">The Alder household &middot; Daniel &amp; Priya, Sam &amp; June &middot; November 2026</div>
+    </div>
+    <nav class="site-nav" aria-label="Sections">
+      <a href="#/" data-nav="dashboard">Dashboard</a>
+      <a href="#/transactions" data-nav="transactions">Transactions</a>
+      <a href="#/budgets" data-nav="budgets">Budgets</a>
+      <a href="#/bills" data-nav="bills">Bills</a>
+      <a href="#/goals" data-nav="goals">Savings goals</a>
+      <a href="#/reports" data-nav="reports">Reports</a>
+    </nav>
+  </header>
+  <main class="page" id="app">
+    <noscript>
+      <div class="card">
+        <h1>Alder Ledger needs JavaScript</h1>
+        <p>This budget site is a small program that runs in your browser. Please turn JavaScript on to see the Alder household&rsquo;s November 2026 budget.</p>
+      </div>
+    </noscript>
+  </main>
+  <footer class="site-footer">
+    <p>Alder Ledger is the Alder household&rsquo;s own budget site. Figures are the family&rsquo;s records for November 2026; anything you add or mark paid is saved only in this browser. No data leaves your device.</p>
+  </footer>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

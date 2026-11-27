@@ -1,52 +1,38 @@
-// Hearth & Ledger entrypoint (Node 22, standard library only).
-//
-// The site itself is plain static files in app/ — one page, one stylesheet
-// and ES modules, no build step. This program hands it in: it copies app/
-// and screenshots/ from beside this file into the output directory and
-// writes dossier.json there with the vendored make.fun library, which is
-// the summary the judge reads (screenshots, first-load bytes, source).
-//
-// Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output:
+// Alder Ledger — the hand-in program for the make.fun household budget
+// bounty (program/v1). It copies the site (app/) and its screenshots into
+// the output directory and writes dossier.json there with the vendored
+// make.fun library, exactly as the gate rebuilds it. Node 22, standard
+// library only, no network, no arguments. Outside the grader,
+// MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-// The program takes no arguments and writes the same bytes on every run.
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
 
-const repoRoot = fileURLToPath(new URL('.', import.meta.url));
-const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const here = fileURLToPath(new URL('.', import.meta.url));
+const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-const appDir = join(repoRoot, 'app');
-if (!existsSync(join(appDir, 'index.html'))) {
-  throw new Error('app/index.html is missing — the site cannot be handed in');
+mkdirSync(out, { recursive: true });
+cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
+mkdirSync(join(out, 'screenshots'), { recursive: true });
+if (existsSync(join(here, 'screenshots'))) {
+  cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
 }
 
-mkdirSync(outputDir, { recursive: true });
-cpSync(appDir, join(outputDir, 'app'), { recursive: true });
+writeFileSync(
+  join(out, 'dossier.json'),
+  buildDossier(out, {
+    text_max_bytes: 163840,
+    screenshots: { max: 4, max_bytes: 262144 },
+    app_max_files: 993,
+    app_max_bytes: 16777216,
+  }),
+);
 
-const shotsDir = join(repoRoot, 'screenshots');
-mkdirSync(join(outputDir, 'screenshots'), { recursive: true });
-if (existsSync(shotsDir)) {
-  cpSync(shotsDir, join(outputDir, 'screenshots'), { recursive: true });
-}
-
-// The gate's own caps, so a bad entry is refused here instead of at the gate:
-// at most 4 screenshots of 256 KiB, at most 993 app files/directories and
-// 16 MiB of app files, and a dossier text of at most 160 KiB.
-const dossier = buildDossier(outputDir, {
-  text_max_bytes: 163840,
-  screenshots: { max: 4, max_bytes: 262144 },
-  app_max_files: 993,
-  app_max_bytes: 16777216,
-});
-const dossierPath = join(outputDir, 'dossier.json');
-writeFileSync(dossierPath, dossier);
-JSON.parse(readFileSync(dossierPath, 'utf8')); // the hand-in must be valid JSON, not just non-empty text
-
-// A hand-in with no dossier is no hand-in: refuse to finish quietly if the
-// file did not land or came out empty.
-if (!existsSync(dossierPath) || dossier.length === 0) {
-  throw new Error('dossier.json was not written — the entry is incomplete');
+// Fail loudly instead of handing in a half-written output directory.
+const dossier = join(out, 'dossier.json');
+if (!existsSync(dossier) || !existsSync(join(out, 'app', 'index.html'))) {
+  throw new Error('hand-in incomplete: dossier.json or app/index.html missing from ' + out);
 }
