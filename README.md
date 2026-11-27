@@ -1,6 +1,8 @@
 # Alder Ledger — Household Budget
 
-[![make.fun bounty](https://img.shields.io/badge/make.fun-best--household--budget--site-1d4d3b)](https://make.fun/bounty/best-household-budget-site-20261126-1457)
+[![make.fun · best-household-budget-site-20261126-1457](https://make.fun/badge/best-household-budget-site-20261126-1457.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
+[![rank](https://make.fun/badge/best-household-budget-site-20261126-1457/miuoas47-gif/best-household-budget-site-20261126-1457/rank.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
+[![reward](https://make.fun/badge/best-household-budget-site-20261126-1457/miuoas47-gif/best-household-budget-site-20261126-1457/reward.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
 
 Alder Ledger is the Alder household's working budget site, built for the
 [make.fun "Make the best household budget site" bounty](https://make.fun/bounty/best-household-budget-site-20261126-1457)
