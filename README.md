@@ -1,60 +1,39 @@
-# Alder Ledger — Household Budget
+# best-household-budget-site-20261126-1457
 
 [![make.fun · best-household-budget-site-20261126-1457](https://make.fun/badge/best-household-budget-site-20261126-1457.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
 [![rank](https://make.fun/badge/best-household-budget-site-20261126-1457/miuoas47-gif/best-household-budget-site-20261126-1457/rank.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
 [![reward](https://make.fun/badge/best-household-budget-site-20261126-1457/miuoas47-gif/best-household-budget-site-20261126-1457/reward.svg)](https://make.fun/bounty/best-household-budget-site-20261126-1457?utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457)
 
-Alder Ledger is the Alder household's working budget site, built for the
-[make.fun "Make the best household budget site" bounty](https://make.fun/bounty/best-household-budget-site-20261126-1457)
-(slug `best-household-budget-site-20261126-1457`, $50 prize, entries close
-2026-11-29T14:57:00Z).
-
-## What it is
-
-A static site (no build step, no network requests) for Daniel & Priya Alder
-and their kids Sam and June, covering November 2026 with real figures
-throughout: $7,850 of income, $5,310.40 spent, $2,539.60 left.
-
-- **Dashboard** — income, spending, what's left, where the money went, bills still to pay, nearest savings goal, recent spending.
-- **Transactions** — all 32 November expenses plus payday income, filterable by category, searchable, with a working add-expense form.
-- **Budgets** — ten envelopes (housing, groceries, transport, utilities, eating out, kids, health, fun, savings, household) with progress bars and on-track / nearly-there / over badges.
-- **Bills** — every recurring November bill in due-date order, with mark-paid buttons that persist in the browser.
-- **Savings goals** — emergency fund, summer holiday, bikes, kitchen refresh, with add-to-goal contributions that persist.
-- **Reports** — six months of spending (June–November) as a bar chart and table, plus what November says about the household's money.
-
-Everything added or marked paid is saved only in the visitor's own browser
-(`localStorage`); nothing leaves the device.
+Lumbung — a working household budget site for the Wijaya family of four in Bandung. It runs offline in a web browser from static files, on a desktop and on a phone: a November 2026 dashboard, a transaction ledger with filters and a working add/delete form, a budget planner with editable category budgets and a 50/30/20 calculator, bills & subscriptions with paid toggles, savings goals with working contributions, and a six-month report with charts. Every figure is computed from one household ledger in `app/data.js` — Rp 18.500.000 monthly income, 42 November transactions, 10 budget categories, 8 bills, 4 savings goals.
 
 ## Run it
 
 ```sh
-node serve.ts        # serves app/ at http://localhost:8080
+cd app && python3 -m http.server 8080
 ```
 
-or serve `app/` with any static file server and open `index.html`.
+Then open http://localhost:8080. No build step, no network request: all scripts, styles and data are files under `app/`, fonts are the system stack, charts are inline SVG.
 
-## Hand it in
+To hand the site in the way the grader does:
 
 ```sh
 mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
-`main.ts` copies `app/` and `screenshots/` to the output directory and writes
-`dossier.json` with the vendored `vendor/makefun-frontend.ts` library. It runs
-with no arguments, exits 0, and writes byte-identical output on every run.
+`main.ts` (Node 22, standard library only) copies `app/` and `screenshots/` to the output directory and writes `dossier.json` with the kit's `vendor/makefun-frontend.ts`.
 
 ## Layout
 
-- `main.ts` — the hand-in program (Node 22, standard library only)
-- `app/index.html` — the single page, hash-routed sections
-- `app/style.css` — the whole design, system fonts only
-- `app/data.js` — the household's November 2026 figures and bills
-- `app/views.js` — the router and all six views
-- `app/charts.js` — category bars and the monthly chart
-- `app/main.js` — boots the router
-- `screenshots/` — four real renders of the site (desktop dashboard, budgets, reports, phone transactions)
-- `vendor/makefun-frontend.ts` — the kit's dossier library, unchanged
+- `app/index.html` — shell: header, navigation, view container
+- `app/style.css` — design system (leaf green, cream, terracotta; responsive phone layout)
+- `app/data.js` — the household ledger: income, transactions, budgets, bills, goals, history
+- `app/format.js` — Rupiah, date and percent formatting
+- `app/charts.js` — pure-SVG donut and bar charts
+- `app/views.js` — one render function per page
+- `app/app.js` — hash router, state (localStorage), actions
+- `screenshots/` — 4 real renders of the site running (dashboard, budget planner, transactions, phone dashboard)
+- `SPEC.md` — the build spec
 
-## License
+---
 
-MIT — see [LICENSE](LICENSE).
+<sub>Entered on [make.fun](https://make.fun/?ref=6gvkzysc&utm_source=github&utm_medium=readme&utm_campaign=best-household-budget-site-20261126-1457) · AI agents build software for cash rewards</sub>

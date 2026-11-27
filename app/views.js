@@ -1,336 +1,257 @@
-// views.js — every page of Alder Ledger: the dashboard, transactions,
-// budgets, bills, savings goals and the monthly report. The router reads
-// the hash (#/budgets and friends), renders the matching view into #app,
-// and wires up that view's controls. All figures come from data.js plus
-// anything this household saved in the browser.
-import {
-  HOUSEHOLD, INCOME, BUDGETS, TRANSACTIONS, BILLS, GOALS, MONTHLY,
-  loadSaved, saveState, money, moneyShort, prettyDate,
-} from './data.js';
-import { categoryBarRow, monthlyChart, escapeHtml } from './charts.js';
+// Lumbung views: one render function per page. Each takes the state (S) and the
+// month model (M) built by app.js, and returns an HTML string. No network, no I/O.
 
-const saved = loadSaved();
-let filterCategory = 'all';
-let filterText = '';
-let notice = '';
+import { CATEGORIES, GOALS, HISTORY, INCOME, MONTHS } from "./data.js";
+import { esc, pct, rupiah, rupiahShort, shortDate } from "./format.js";
+import { barChart, donutChart } from "./charts.js";
 
-function state() {
-  const bills = BILLS.map(function (b) {
-    return Object.assign({}, b, { paid: b.paid || saved.paidBillIds.indexOf(b.id) !== -1 });
-  });
-  const goals = GOALS.map(function (g) {
-    return Object.assign({}, g, { saved: g.saved + (saved.goalExtra[g.id] || 0) });
-  });
-  return { transactions: TRANSACTIONS.concat(saved.extraTransactions), bills: bills, goals: goals };
+function catName(id) {
+  if (id === "gaji") return "Pemasukan";
+  return (CATEGORIES.find((c) => c.id === id) || { name: id }).name;
 }
 
-function totals(tx) {
-  const income = INCOME.reduce(function (sum, row) { return sum + row.amount; }, 0);
-  const spent = tx.reduce(function (sum, row) { return sum + row.amount; }, 0);
-  const byCategory = {};
-  BUDGETS.forEach(function (b) { byCategory[b.id] = 0; });
-  tx.forEach(function (row) {
-    if (byCategory[row.category] !== undefined) byCategory[row.category] += row.amount;
-  });
-  return { income: income, spent: spent, left: income - spent, byCategory: byCategory };
+function catColor(id) {
+  return (CATEGORIES.find((c) => c.id === id) || { color: "#5d665c" }).color;
 }
 
-function categoryLabel(id) {
-  const found = BUDGETS.find(function (b) { return b.id === id; });
-  return found ? found.label : id;
+function statCard(label, value, sub, cls = "") {
+  return `<div class="card stat ${cls}"><div class="label">${label}</div>` +
+    `<div class="value">${value}</div><div class="sub">${sub}</div></div>`;
 }
 
-function setNotice(text) {
-  notice = text;
-  const slot = document.getElementById('notice-slot');
-  if (slot) slot.innerHTML = notice ? '<div class="notice">' + escapeHtml(notice) + '</div>' : '';
+function budgetRows(byCat, limit = 0) {
+  const rows = limit ? byCat.slice(0, limit) : byCat;
+  return rows.map(({ cat, spent, budget }) => {
+    const ratio = budget ? spent / budget : 0;
+    const cls = ratio > 1 ? "over" : ratio > 0.85 ? "near" : "";
+    const left = budget - spent;
+    return `<div class="budget-row"><span class="cat">${esc(cat.name)}</span>` +
+      `<span class="nums"><b>${rupiah(spent)}</b> / ${rupiah(budget)}</span>` +
+      `<span class="bar-track"><span class="bar-fill ${cls}" style="display:block;width:${Math.min(100, Math.round(ratio * 100))}%"></span></span>` +
+      `<span class="hint">${pct(spent, budget)} terpakai · ${left >= 0 ? `sisa ${rupiah(left)}` : `lewat ${rupiah(-left)}`}</span></div>`;
+  }).join("");
 }
 
-function markNav(route) {
-  document.querySelectorAll('[data-nav]').forEach(function (link) {
-    link.classList.toggle('active', link.getAttribute('data-nav') === route);
-  });
+function txTable(txs, withDelete) {
+  if (!txs.length) return `<p class="hint">Belum ada transaksi yang cocok dengan filter ini.</p>`;
+  const rows = txs.map((t) => {
+    const cls = t.amount >= 0 ? "pos" : "neg";
+    const sign = t.amount >= 0 ? "+" : "−";
+    return `<tr><td>${shortDate(t.date)}</td><td>${esc(t.desc)}</td>` +
+      `<td><span class="tag" style="background:${catColor(t.cat)}22;color:${catColor(t.cat)}">${esc(catName(t.cat))}</span></td>` +
+      `<td class="num ${cls}">${sign}${rupiah(Math.abs(t.amount))}</td>` +
+      (withDelete ? `<td class="num"><button type="button" class="btn ghost small" data-action="delete-tx" data-id="${t.id}">Hapus</button></td>` : "") +
+      `</tr>`;
+  }).join("");
+  return `<table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th>` +
+    `<th class="num">Jumlah</th>${withDelete ? "<th></th>" : ""}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function transactionRows(tx) {
-  return tx.map(function (row) {
-    const isIncome = row.category === 'income';
-    return '<tr><td>' + prettyDate(row.date) + '</td><td>' + escapeHtml(row.payee) + '</td>' +
-      '<td><span class="cat-pill' + (isIncome ? ' income' : '') + '">' + escapeHtml(isIncome ? 'Income' : categoryLabel(row.category)) + '</span></td>' +
-      '<td class="hide-phone muted">' + escapeHtml(row.note || '') + '</td>' +
-      '<td class="num">' + (isIncome ? '+' : '−') + money(row.amount) + '</td></tr>';
-  }).join('');
+export function viewDashboard(S, M) {
+  const donutSlices = M.byCat.filter((x) => x.spent > 0)
+    .map(({ cat, spent }) => ({ label: cat.name, value: spent, color: cat.color }));
+  const legend = M.byCat.filter((x) => x.spent > 0).map(({ cat, spent }) =>
+    `<li><span class="swatch" style="background:${cat.color}"></span>${esc(cat.name)}` +
+    `<span class="amt">${rupiah(spent)}</span></li>`).join("");
+  const upcoming = M.bills.filter((b) => !b.paid).slice(0, 3).map((b) =>
+    `<div class="bill-row"><div class="grow"><b>${esc(b.name)}</b>` +
+    `<div class="due">Jatuh tempo ${b.dueDay} ${S.monthLabel}</div></div>` +
+    `<span class="amount">${rupiah(b.amount)}</span>` +
+    `<span class="pill due-soon">Belum dibayar</span></div>`).join("");
+  const goals = GOALS.map((g) => {
+    const saved = S.goals.find((x) => x.id === g.id).saved;
+    return `<div class="budget-row"><span class="cat">${esc(g.name)}</span>` +
+      `<span class="nums"><b>${rupiah(saved)}</b> / ${rupiah(g.target)}</span>` +
+      `<span class="bar-track"><span class="bar-fill" style="display:block;width:${Math.min(100, Math.round((saved / g.target) * 100))}%"></span></span></div>`;
+  }).join("");
+  const recent = txTable(M.txs.slice(0, 6), false);
+  return `<div class="page-head"><h2>Dasbor ${esc(S.monthLabel)}</h2>` +
+    `<p>Selamat datang, Keluarga Wijaya. Ini ringkasan uang keluarga bulan ini — ` +
+    `semua angka dihitung langsung dari buku kas.</p></div>` +
+    `<div class="grid grid-4">` +
+    statCard("Pemasukan", rupiah(M.income), `${INCOME.length} sumber · gaji + les privat`) +
+    statCard("Pengeluaran", rupiah(M.spent), `${M.txs.filter((t) => t.amount < 0).length} transaksi bulan ini`, "warn") +
+    statCard("Sisa bulan ini", rupiah(M.remaining), M.remaining >= 0 ? "Masih di jalur anggaran" : "Melewati anggaran", M.remaining >= 0 ? "good" : "warn") +
+    statCard("Tingkat tabungan", pct(M.remaining, M.income), "dari pemasukan disisihkan") +
+    `</div>` +
+    `<div class="grid grid-2" style="margin-top:1rem">` +
+    `<section class="card"><h3>Ke mana uang pergi?</h3>` +
+    `<div class="chart-wrap">${donutChart(donutSlices)}<ul class="legend" style="flex:1;min-width:200px">${legend}</ul></div></section>` +
+    `<section class="card"><h3>Anggaran per kategori</h3>${budgetRows(M.byCat, 5)}` +
+    `<p class="hint" style="margin-top:.6rem"><a href="#/anggaran">Lihat semua kategori &amp; kalkulator 50/30/20 →</a></p></section>` +
+    `<section class="card"><h3>Tagihan yang belum dibayar</h3>${upcoming || '<p class="hint">Semua tagihan bulan ini sudah dibayar. 🎉</p>'} ` +
+    `<p class="hint" style="margin-top:.6rem"><a href="#/tagihan">Kelola semua tagihan →</a></p></section>` +
+    `<section class="card"><h3>Tabungan keluarga</h3>${goals}` +
+    `<p class="hint" style="margin-top:.6rem"><a href="#/tabungan">Lihat semua tujuan tabungan →</a></p></section>` +
+    `</div>` +
+    `<section class="card" style="margin-top:1rem"><h3>Transaksi terbaru</h3>${recent}` +
+    `<p class="hint" style="margin-top:.6rem"><a href="#/transaksi">Lihat semua transaksi &amp; tambah baru →</a></p></section>`;
 }
 
-// ---- Dashboard -------------------------------------------------------------
-function renderDashboard(app) {
-  const s = state();
-  const t = totals(s.transactions);
-  const plannedTotal = BUDGETS.reduce(function (sum, b) { return sum + b.planned; }, 0);
-  const upcoming = s.bills.filter(function (b) { return !b.paid; });
-  const recent = s.transactions.slice().sort(function (a, b) { return b.date.localeCompare(a.date); }).slice(0, 8);
-  const sortedCats = BUDGETS.slice().sort(function (a, b) { return t.byCategory[b.id] - t.byCategory[a.id]; });
-  const topGoal = s.goals.slice().sort(function (a, b) { return b.saved / b.target - a.saved / a.target; })[0];
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>November at a glance</h1>' +
-    '<p>' + escapeHtml(HOUSEHOLD.members) + ' — income, spending and what is left, up to 26 November 2026.</p></div>' +
-    '<a href="#/transactions"><button type="button">Add an expense</button></a></div>' +
-    '<div id="notice-slot"></div>' +
-    '<section class="cards" aria-label="Month summary">' +
-    statCard('Income this month', money(t.income), 'Two salaries, paid 1 November', '') +
-    statCard('Spent so far', money(t.spent), 'Of ' + money(plannedTotal) + ' planned', '') +
-    statCard('Left this month', money(t.left), 'Income minus spending', t.left >= 0 ? 'good' : 'bad') +
-    statCard('Saved this month', money(t.byCategory.savings), 'Emergency fund &amp; goals', 'good') +
-    '</section>' +
-    '<div class="grid-2"><section class="card"><h2>Where the money went</h2>' +
-    sortedCats.slice(0, 6).map(function (b) { return categoryBarRow(b.label, t.byCategory[b.id], b.planned); }).join('') +
-    '<p class="small muted" style="margin-top:10px"><a href="#/budgets">See all ten budget categories &rarr;</a></p></section>' +
-    '<section class="card"><h2>Still to pay</h2>' +
-    (upcoming.length === 0
-      ? '<p>Every November bill is paid. Nice work.</p>'
-      : '<p><strong>' + money(upcoming.reduce(function (sum, b) { return sum + b.amount; }, 0)) + '</strong> due before the month ends:</p>' +
-        '<ul class="tip-list">' + upcoming.map(function (b) {
-          return '<li>' + escapeHtml(b.name) + ' — ' + money(b.amount) + ', due ' + prettyDate(b.due) + '</li>';
-        }).join('') + '</ul><p><a href="#/bills">Open the bills page &rarr;</a></p>') +
-    '<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">' +
-    '<h2>Closest savings goal</h2><p><strong>' + escapeHtml(topGoal.name) + '</strong> — ' + money(topGoal.saved) + ' of ' + money(topGoal.target) +
-    ' (' + Math.round((topGoal.saved / topGoal.target) * 100) + '%)</p>' +
-    '<p><a href="#/goals">See all savings goals &rarr;</a></p></section></div>' +
-    '<section class="card"><h2>Recent spending</h2><table><thead><tr><th>Date</th><th>Where</th><th>Category</th><th class="hide-phone">Note</th><th class="num">Amount</th></tr></thead>' +
-    '<tbody>' + transactionRows(recent) + '</tbody></table>' +
-    '<p class="small muted" style="margin-top:10px"><a href="#/transactions">See all ' + s.transactions.length + ' November transactions &rarr;</a></p></section>';
+export function viewTransactions(S, M) {
+  const opts = [`<option value="all">Semua kategori</option>`,
+    ...CATEGORIES.map((c) => `<option value="${c.id}" ${S.filterCat === c.id ? "selected" : ""}>${esc(c.name)}</option>`)].join("");
+  const filtered = M.txs.filter((t) =>
+    (S.filterCat === "all" || t.cat === S.filterCat) &&
+    (S.filterType === "all" || (S.filterType === "in" ? t.amount >= 0 : t.amount < 0)) &&
+    (!S.filterText || t.desc.toLowerCase().includes(S.filterText.toLowerCase())));
+  const inSum = filtered.filter((t) => t.amount >= 0).reduce((s, t) => s + t.amount, 0);
+  const outSum = filtered.filter((t) => t.amount < 0).reduce((s, t) => s - t.amount, 0);
+  return `<div class="page-head"><h2>Transaksi ${esc(S.monthLabel)}</h2>` +
+    `<p>Semua pemasukan dan pengeluaran keluarga, lengkap dengan filter dan form tambah transaksi. ` +
+    `Menambah atau menghapus transaksi langsung mengubah dasbor, anggaran, dan laporan.</p></div>` +
+    `<div class="grid grid-2"><section class="card"><h3>Tambah transaksi</h3>` +
+    `<form id="addTxForm" class="form-grid">` +
+    `<label>Tanggal<input type="date" name="date" value="${S.month}-28" required></label>` +
+    `<label>Keterangan<input type="text" name="desc" placeholder="cth. Belanja pasar" required maxlength="80"></label>` +
+    `<label>Kategori<select name="cat">${CATEGORIES.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>` +
+    `<label>Jumlah (Rp)<input type="number" name="amount" min="1000" step="1000" placeholder="150000" required></label>` +
+    `<label>Jenis<select name="kind"><option value="out">Pengeluaran</option><option value="in">Pemasukan</option></select></label>` +
+    `<span></span><span><button class="btn" type="submit">Simpan transaksi</button></span>` +
+    `</form></section>` +
+    `<section class="card"><h3>Ringkasan filter</h3>` +
+    `<p><span class="big-number">${filtered.length}</span> transaksi tampil</p>` +
+    `<p>Pemasukan terfilter: <b class="pos">+${rupiah(inSum)}</b><br>` +
+    `Pengeluaran terfilter: <b class="neg">−${rupiah(outSum)}</b><br>` +
+    `Selisih: <b>${rupiah(inSum - outSum)}</b></p>` +
+    `<p class="hint">Tip: ketik “pasar” di kolom cari untuk melihat semua belanja pasar bulan ini.</p></section></div>` +
+    `<section class="card" style="margin-top:1rem"><h3>Daftar transaksi</h3>` +
+    `<div class="filters"><label>Kategori<br><select id="filterCat">${opts}</select></label>` +
+    `<label>Jenis<br><select id="filterType"><option value="all" ${S.filterType === "all" ? "selected" : ""}>Semua</option>` +
+    `<option value="in" ${S.filterType === "in" ? "selected" : ""}>Pemasukan</option>` +
+    `<option value="out" ${S.filterType === "out" ? "selected" : ""}>Pengeluaran</option></select></label>` +
+    `<label>Cari<br><input id="filterText" type="search" placeholder="Cari keterangan…" value="${esc(S.filterText)}"></label></div>` +
+    txTable(filtered, true) + `</section>`;
 }
 
-function statCard(label, value, sub, tone) {
-  return '<div class="card"><div class="stat-label">' + label + '</div>' +
-    '<div class="stat-value ' + tone + '">' + value + '</div><div class="stat-sub">' + sub + '</div></div>';
+export function viewBudget(S, M) {
+  const needsIds = ["belanja", "rumah", "transport", "sekolah", "kesehatan"];
+  const wantsIds = ["makan", "hiburan", "pakaian", "sosial"];
+  const byId = Object.fromEntries(M.byCat.map((x) => [x.cat.id, x.spent]));
+  const needs = needsIds.reduce((s, id) => s + (byId[id] || 0), 0);
+  const wants = wantsIds.reduce((s, id) => s + (byId[id] || 0), 0);
+  const saved = Math.max(0, M.remaining);
+  const total = M.income || 1;
+  const totalBudget = CATEGORIES.reduce((s, c) => s + S.budgets[c.id], 0);
+  const rows = M.byCat.map(({ cat, spent }) => {
+    const budget = S.budgets[cat.id];
+    const ratio = budget ? spent / budget : 0;
+    const cls = ratio > 1 ? "over" : ratio > 0.85 ? "near" : "";
+    return `<div class="budget-row"><span class="cat">${esc(cat.name)}</span>` +
+      `<span class="nums"><b>${rupiah(spent)}</b> / <input type="number" min="0" step="50000" value="${budget}" ` +
+      `data-action="edit-budget" data-id="${cat.id}" aria-label="Anggaran ${esc(cat.name)}" style="width:7.5rem;padding:.2rem .4rem;border:1px solid var(--line);border-radius:6px;text-align:right"></span>` +
+      `<span class="bar-track"><span class="bar-fill ${cls}" style="display:block;width:${Math.min(100, Math.round(ratio * 100))}%"></span></span>` +
+      `<span class="hint">${pct(spent, budget)} terpakai · ${budget - spent >= 0 ? `sisa ${rupiah(budget - spent)}` : `lewat ${rupiah(spent - budget)}`}</span></div>`;
+  }).join("");
+  return `<div class="page-head"><h2>Anggaran ${esc(S.monthLabel)}</h2>` +
+    `<p>Atur batas belanja tiap kategori — ketik angka baru di kolom anggaran dan halaman langsung ` +
+    `menghitung ulang. Total anggaran keluarga: <b>${rupiah(totalBudget)}</b> dari pemasukan <b>${rupiah(M.income)}</b>.</p></div>` +
+    `<section class="card"><h3>Kalkulator 50/30/20</h3>` +
+    `<p class="rule-note">Aturan praktis: 50% kebutuhan, 30% keinginan, 20% tabungan. Ini posisi keluarga bulan ini:</p>` +
+    `<div class="split" style="margin-top:.7rem">` +
+    `<div class="needs"><div class="pct">${pct(needs, total)}</div><b>Kebutuhan</b><div>${rupiah(needs)}</div><div class="hint">target 50% · ${rupiah(total * 0.5)}</div></div>` +
+    `<div class="wants"><div class="pct">${pct(wants, total)}</div><b>Keinginan</b><div>${rupiah(wants)}</div><div class="hint">target 30% · ${rupiah(total * 0.3)}</div></div>` +
+    `<div class="saves"><div class="pct">${pct(saved, total)}</div><b>Tabungan</b><div>${rupiah(saved)}</div><div class="hint">target 20% · ${rupiah(total * 0.2)}</div></div>` +
+    `</div>` +
+    `<p class="rule-note" style="margin-top:.7rem">${saved >= total * 0.2
+      ? "Keluarga sudah menabung di atas target 20% — pertahankan, dan alihkan sisa ke dana darurat."
+      : "Tabungan masih di bawah target 20%. Coba potong Rp 200.000 dari makan di luar bulan depan."}</p></section>` +
+    `<section class="card" style="margin-top:1rem"><h3>Anggaran per kategori</h3>${rows}</section>`;
 }
 
-// ---- Transactions ----------------------------------------------------------
-function renderTransactions(app) {
-  const s = state();
-  const t = totals(s.transactions);
-  const incomeRows = INCOME.map(function (row) {
-    return { id: row.id, date: row.date, payee: row.source, category: 'income', amount: row.amount, note: 'Payday' };
-  });
-  let rows = s.transactions.concat(incomeRows).slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
-  if (filterCategory !== 'all') rows = rows.filter(function (r) { return r.category === filterCategory; });
-  if (filterText) {
-    const q = filterText.toLowerCase();
-    rows = rows.filter(function (r) { return (r.payee + ' ' + (r.note || '')).toLowerCase().indexOf(q) !== -1; });
-  }
-  const options = ['<option value="all">All categories</option>'].concat(
-    BUDGETS.map(function (b) {
-      return '<option value="' + b.id + '"' + (filterCategory === b.id ? ' selected' : '') + '>' + escapeHtml(b.label) + '</option>';
-    }),
-    ['<option value="income"' + (filterCategory === 'income' ? ' selected' : '') + '>Income</option>'],
-  );
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>Transactions</h1>' +
-    '<p>Every dollar the household spent — and earned — in November 2026. ' + s.transactions.length + ' expenses, ' + money(t.spent) + ' in all.</p></div></div>' +
-    '<div id="notice-slot"></div>' +
-    '<section class="card section"><h2>Add an expense</h2>' +
-    '<form class="add-form" id="add-form"><div><label for="f-date">Date</label><input id="f-date" type="date" value="2026-11-26" required></div>' +
-    '<div><label for="f-amount">Amount ($)</label><input id="f-amount" type="number" min="0.01" step="0.01" placeholder="25.00" required></div>' +
-    '<div><label for="f-payee">Where / to whom</label><input id="f-payee" type="text" maxlength="80" placeholder="GreenMart" required></div>' +
-    '<div><label for="f-category">Category</label><select id="f-category">' +
-    BUDGETS.map(function (b) { return '<option value="' + b.id + '">' + escapeHtml(b.label) + '</option>'; }).join('') +
-    '</select></div>' +
-    '<div class="full"><label for="f-note">Note (optional)</label><input id="f-note" type="text" maxlength="120" placeholder="What was it for?"></div>' +
-    '<div class="full"><button type="submit">Add expense</button></div></form></section>' +
-    '<section class="card"><div class="toolbar">' +
-    '<div class="field"><label for="filter-cat">Category</label><select id="filter-cat">' + options.join('') + '</select></div>' +
-    '<div class="field"><label for="filter-text">Search</label><input id="filter-text" type="search" placeholder="Shop, note, payee…" value="' + escapeHtml(filterText) + '"></div>' +
-    '</div>' +
-    '<table><thead><tr><th>Date</th><th>Where</th><th>Category</th><th class="hide-phone">Note</th><th class="num">Amount</th></tr></thead>' +
-    '<tbody>' + (rows.length ? transactionRows(rows) : '<tr><td colspan="5">Nothing matches that filter yet.</td></tr>') + '</tbody></table>' +
-    '<p class="small muted">Showing ' + rows.length + ' of ' + (s.transactions.length + INCOME.length) + ' rows.</p></section>';
-
-  document.getElementById('add-form').addEventListener('submit', function (event) {
-    event.preventDefault();
-    const amount = Number(document.getElementById('f-amount').value);
-    const payee = document.getElementById('f-payee').value.trim();
-    if (!payee || !(amount > 0)) return;
-    saved.extraTransactions.push({
-      id: 'u' + Date.now(),
-      date: document.getElementById('f-date').value || '2026-11-26',
-      payee: payee,
-      category: document.getElementById('f-category').value,
-      amount: Math.round(amount * 100) / 100,
-      note: document.getElementById('f-note').value.trim(),
-    });
-    saveState(saved);
-    setNotice('Added: ' + payee + ' — ' + money(amount) + ' under ' + categoryLabel(document.getElementById('f-category').value) + '.');
-    renderTransactions(app);
-    setNotice(notice);
-  });
-  document.getElementById('filter-cat').addEventListener('change', function (event) {
-    filterCategory = event.target.value;
-    renderTransactions(app);
-  });
-  document.getElementById('filter-text').addEventListener('input', function (event) {
-    filterText = event.target.value;
-    renderTransactions(app);
-    const box = document.getElementById('filter-text');
-    box.focus();
-    box.setSelectionRange(box.value.length, box.value.length);
-  });
+export function viewBills(S, M) {
+  const unpaid = M.bills.filter((b) => !b.paid);
+  const unpaidTotal = unpaid.reduce((s, b) => s + b.amount, 0);
+  const paidTotal = M.bills.filter((b) => b.paid).reduce((s, b) => s + b.amount, 0);
+  const rows = M.bills.map((b) => {
+    const today = 29; // "today" inside the demo month, for due labels
+    const pill = b.paid ? `<span class="pill paid">Lunas</span>`
+      : b.dueDay < today ? `<span class="pill overdue">Jatuh tempo</span>`
+      : `<span class="pill due-soon">Jatuh tempo ${b.dueDay} Nov</span>`;
+    return `<div class="bill-row"><div class="grow"><b>${esc(b.name)}</b>` +
+      `<div class="due">${b.auto ? "Autodebet" : "Bayar manual"} · jatuh tempo tiap tanggal ${b.dueDay}</div></div>` +
+      `<span class="amount">${rupiah(b.amount)}</span>${pill}` +
+      `<button type="button" class="btn ${b.paid ? "ghost" : ""} small" data-action="toggle-bill" data-id="${b.id}">` +
+      `${b.paid ? "Batalkan lunas" : "Tandai lunas"}</button></div>`;
+  }).join("");
+  return `<div class="page-head"><h2>Tagihan &amp; langganan</h2>` +
+    `<p>Tagihan rutin keluarga Wijaya. Tandai lunas saat sudah dibayar — total di bawah langsung berubah.</p></div>` +
+    `<div class="grid grid-3">` +
+    statCard("Belum dibayar", rupiah(unpaidTotal), `${unpaid.length} tagihan menunggu`) +
+    statCard("Sudah dibayar", rupiah(paidTotal), `${M.bills.length - unpaid.length} dari ${M.bills.length} tagihan`, "good") +
+    statCard("Total tagihan / bulan", rupiah(unpaidTotal + paidTotal), `${pct(unpaidTotal + paidTotal, M.income)} dari pemasukan`) +
+    `</div>` +
+    `<section class="card" style="margin-top:1rem"><h3>Daftar tagihan — November 2026</h3>${rows}` +
+    `<p class="hint" style="margin-top:.6rem">Tagihan autodebet (PLN, IndiHome, SPP, BPJS, Netflix, Spotify) ` +
+    `dipotong otomatis dari rekening — pastikan saldo cukup sebelum tanggal jatuh tempo.</p></section>`;
 }
 
-// ---- Budgets ---------------------------------------------------------------
-function renderBudgets(app) {
-  const s = state();
-  const t = totals(s.transactions);
-  const plannedTotal = BUDGETS.reduce(function (sum, b) { return sum + b.planned; }, 0);
-  const over = BUDGETS.filter(function (b) { return t.byCategory[b.id] > b.planned; });
-  const cards = BUDGETS.map(function (b) {
-    const spent = t.byCategory[b.id];
-    const pct = b.planned > 0 ? Math.round((spent / b.planned) * 100) : 0;
-    const left = b.planned - spent;
-    const badge = spent > b.planned
-      ? '<span class="badge over">Over by ' + money(-left) + '</span>'
-      : pct >= 85 ? '<span class="badge near">Nearly there</span>' : '<span class="badge ok">On track</span>';
-    return '<div class="card budget-card"><div class="top"><h3>' + escapeHtml(b.label) + '</h3>' + badge + '</div>' +
-      '<div class="spent">' + money(spent) + ' <span class="muted small">of ' + money(b.planned) + '</span></div>' +
-      '<div class="progress"><span class="' + (spent > b.planned ? 'over' : pct >= 85 ? 'near' : '') + '" style="width:' + Math.min(100, pct) + '%"></span></div>' +
-      '<p class="small muted">' + pct + '% used &middot; ' + (left >= 0 ? money(left) + ' left' : money(-left) + ' over') + '<br>' + escapeHtml(b.note) + '</p></div>';
-  }).join('');
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>Budgets</h1>' +
-    '<p>Ten envelopes for November: ' + money(plannedTotal) + ' planned, ' + money(t.spent) + ' spent so far. ' +
-    (over.length ? over.map(function (b) { return b.label; }).join(', ') + ' ' + (over.length === 1 ? 'is' : 'are') + ' over plan.' : 'Nothing is over plan yet.') + '</p></div></div>' +
-    '<div class="budget-grid">' + cards + '</div>' +
-    '<section class="card"><h2>How the envelopes work</h2><p>Each category gets a fixed amount on payday. Groceries, transport and eating out are the ones that move most — a big shop early in the month makes the bar jump, then it settles. If a category runs over, the household takes the difference from Fun &amp; leisure first, never from Savings.</p>' +
-    '<p><a href="#/reports">See how November compares with June–October &rarr;</a></p></section>';
+export function viewGoals(S, M) {
+  const totalSaved = S.goals.reduce((s, g) => s + g.saved, 0);
+  const totalTarget = S.goals.reduce((s, g) => s + g.target, 0);
+  const cards = S.goals.map((g) => {
+    const ratio = g.saved / g.target;
+    const remain = g.target - g.saved;
+    return `<section class="card"><div class="goal-head"><h3>${esc(g.name)}</h3>` +
+      `<span class="target">${pct(g.saved, g.target)} tercapai</span></div>` +
+      `<p class="hint">${esc(g.note)}</p>` +
+      `<p><span class="goal-amount">${rupiah(g.saved)}</span> <span class="goal-pct">dari ${rupiah(g.target)}</span></p>` +
+      `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, Math.round(ratio * 100))}%"></div></div>` +
+      `<p class="hint">${remain > 0 ? `Kurang ${rupiah(remain)} lagi.` : "Tujuan tercapai! 🎉"}</p>` +
+      `<div class="btn-row">` +
+      `<button type="button" class="btn small" data-action="contribute" data-id="${g.id}" data-amount="100000">+ Rp 100 rb</button>` +
+      `<button type="button" class="btn small" data-action="contribute" data-id="${g.id}" data-amount="500000">+ Rp 500 rb</button>` +
+      `<button type="button" class="btn small ghost" data-action="contribute" data-id="${g.id}" data-amount="1000000">+ Rp 1 jt</button>` +
+      `</div></section>`;
+  }).join("");
+  return `<div class="page-head"><h2>Tabungan keluarga</h2>` +
+    `<p>Empat tujuan yang sedang dikejar bersama. Total terkumpul <b>${rupiah(totalSaved)}</b> ` +
+    `dari target <b>${rupiah(totalTarget)}</b> (${pct(totalSaved, totalTarget)}). ` +
+    `Klik tombol tambah untuk menyetor — saldo langsung bertambah.</p></div>` +
+    `<div class="grid grid-2">${cards}</div>` +
+    `<section class="card" style="margin-top:1rem"><h3>Tambah tujuan baru</h3>` +
+    `<form id="addGoalForm" class="form-grid">` +
+    `<label>Nama tujuan<input type="text" name="name" placeholder="cth. Dana pendidikan Dita" required maxlength="60"></label>` +
+    `<label>Target (Rp)<input type="number" name="target" min="100000" step="100000" placeholder="10000000" required></label>` +
+    `<label>Catatan<input type="text" name="note" placeholder="cth. Untuk tahun ajaran baru" maxlength="80"></label>` +
+    `<span></span><span><button class="btn" type="submit">Buat tujuan tabungan</button></span>` +
+    `</form></section>`;
 }
 
-// ---- Bills -----------------------------------------------------------------
-function renderBills(app) {
-  const s = state();
-  const unpaid = s.bills.filter(function (b) { return !b.paid; });
-  const unpaidTotal = unpaid.reduce(function (sum, b) { return sum + b.amount; }, 0);
-  const rows = s.bills.slice().sort(function (a, b) { return a.due.localeCompare(b.due); }).map(function (b) {
-    return '<tr><td>' + prettyDate(b.due) + '</td><td><strong>' + escapeHtml(b.name) + '</strong><br><span class="muted small">' + escapeHtml(b.payee) + '</span></td>' +
-      '<td class="num">' + money(b.amount) + '</td>' +
-      '<td>' + (b.paid
-        ? '<span class="badge paid">Paid</span>'
-        : '<span class="badge due">Due ' + prettyDate(b.due) + '</span>') + '</td>' +
-      '<td>' + (b.paid ? '' : '<button type="button" class="secondary small-btn" data-pay="' + b.id + '">Mark paid</button>') + '</td></tr>';
-  }).join('');
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>Bills</h1>' +
-    '<p>Every recurring bill for November 2026, in due-date order. ' + unpaid.length + ' still to pay, ' + money(unpaidTotal) + ' in all.</p></div></div>' +
-    '<div id="notice-slot"></div>' +
-    (unpaid.length ? '<div class="callout section"><h3>Coming up</h3><p>' + unpaid.map(function (b) { return escapeHtml(b.name) + ' (' + money(b.amount) + ', ' + prettyDate(b.due) + ')'; }).join(' and ') + ' — set the money aside now so payday week stays calm.</p></div>' : '') +
-    '<section class="card"><table><thead><tr><th>Due</th><th>Bill</th><th class="num">Amount</th><th>Status</th><th></th></tr></thead>' +
-    '<tbody>' + rows + '</tbody></table></section>' +
-    '<p class="small muted">Marking a bill paid saves it in this browser, so the dashboard and this list stay in step.</p>';
-
-  app.querySelectorAll('[data-pay]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      const id = btn.getAttribute('data-pay');
-      if (saved.paidBillIds.indexOf(id) === -1) saved.paidBillIds.push(id);
-      saveState(saved);
-      const bill = BILLS.find(function (b) { return b.id === id; });
-      renderBills(app);
-      setNotice((bill ? bill.name : 'Bill') + ' marked paid.');
-    });
-  });
-}
-
-// ---- Savings goals ---------------------------------------------------------
-function renderGoals(app) {
-  const s = state();
-  const totalSaved = s.goals.reduce(function (sum, g) { return sum + g.saved; }, 0);
-  const totalTarget = s.goals.reduce(function (sum, g) { return sum + g.target; }, 0);
-  const cards = s.goals.map(function (g) {
-    const pct = Math.round((g.saved / g.target) * 100);
-    return '<div class="card budget-card"><div class="top"><h3>' + escapeHtml(g.name) + '</h3>' +
-      '<span class="badge ' + (pct >= 70 ? 'ok' : pct >= 40 ? 'near' : 'over') + '">' + pct + '%</span></div>' +
-      '<div class="spent">' + money(g.saved) + ' <span class="muted small">of ' + money(g.target) + '</span></div>' +
-      '<div class="progress"><span class="' + (pct >= 70 ? '' : pct >= 40 ? 'near' : 'over') + '" style="width:' + pct + '%"></span></div>' +
-      '<p class="small muted">' + escapeHtml(g.note) + '<br>' + money(g.target - g.saved) + ' still to save.</p>' +
-      '<form class="goal-form" data-goal="' + g.id + '" style="display:flex;gap:8px;margin-top:8px">' +
-      '<input type="number" min="1" step="1" placeholder="Add $…" aria-label="Amount to add to ' + escapeHtml(g.name) + '" required>' +
-      '<button type="submit" class="secondary small-btn">Add to goal</button></form></div>';
-  }).join('');
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>Savings goals</h1>' +
-    '<p>' + money(totalSaved) + ' saved toward ' + money(totalTarget) + ' of goals — ' + Math.round((totalSaved / totalTarget) * 100) + '% of the way there. The emergency fund comes first; the rest share what is left after the bills.</p></div></div>' +
-    '<div id="notice-slot"></div>' +
-    '<div class="budget-grid">' + cards + '</div>' +
-    '<section class="card"><h2>How the household saves</h2><p>On payday, $1,200 moves straight to savings before anything else is spent — pay yourself first, then live on the rest. The emergency fund gets $800 of it, the holiday $200, the bikes $100 and the kitchen $100. A contribution added here is saved in this browser and shows up on the dashboard too.</p></section>';
-
-  app.querySelectorAll('.goal-form').forEach(function (form) {
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      const amount = Number(form.querySelector('input').value);
-      if (!(amount > 0)) return;
-      const id = form.getAttribute('data-goal');
-      saved.goalExtra[id] = (saved.goalExtra[id] || 0) + amount;
-      saveState(saved);
-      const goal = GOALS.find(function (g) { return g.id === id; });
-      renderGoals(app);
-      setNotice('Added ' + money(amount) + ' to ' + (goal ? goal.name : 'the goal') + '.');
-    });
-  });
-}
-
-// ---- Reports ---------------------------------------------------------------
-function renderReports(app) {
-  const s = state();
-  const t = totals(s.transactions);
-  const sortedCats = BUDGETS.slice().sort(function (a, b) { return t.byCategory[b.id] - t.byCategory[a.id]; });
-  const biggest = sortedCats[0];
-  const cheapest = MONTHLY.slice().sort(function (a, b) { return a.spent - b.spent; })[0];
-  const savingsRate = Math.round(((t.income - t.spent) / t.income) * 100);
-  const monthRows = MONTHLY.map(function (m) {
-    return '<tr><td>' + m.month + ' 2026</td><td class="num">' + money(m.income) + '</td><td class="num">' + money(m.spent) + '</td><td class="num">' + money(m.income - m.spent) + '</td></tr>';
-  }).join('');
-
-  app.innerHTML =
-    '<div class="page-head"><div><h1>Reports</h1>' +
-    '<p>Six months of the Alder household&rsquo;s money, June to November 2026 — what changed, what stayed steady, and what to do about it.</p></div></div>' +
-    '<section class="cards">' +
-    statCard('Biggest category', biggest.label, money(t.byCategory[biggest.id]) + ' in November', '') +
-    statCard('Cheapest month', cheapest.month, money(cheapest.spent) + ' spent', 'good') +
-    statCard('Savings rate', savingsRate + '%', 'Income left after spending', savingsRate >= 20 ? 'good' : 'warn') +
-    statCard('Six-month average', money(Math.round(MONTHLY.reduce(function (sum, m) { return sum + m.spent; }, 0) / MONTHLY.length)), 'Spent per month', '') +
-    '</section>' +
-    '<section class="card section"><h2>Spending by month</h2>' + monthlyChart(MONTHLY) +
-    '<div class="legend"><span><span class="swatch" style="background:var(--pine)"></span>Earlier months</span><span><span class="swatch" style="background:var(--amber)"></span>November (so far)</span></div></section>' +
-    '<div class="grid-2-equal"><section class="card"><h2>Month by month</h2>' +
-    '<table><thead><tr><th>Month</th><th class="num">Income</th><th class="num">Spent</th><th class="num">Left</th></tr></thead><tbody>' + monthRows + '</tbody></table></section>' +
-    '<section class="card"><h2>What November says</h2><ul class="tip-list">' +
-    '<li><strong>' + escapeHtml(biggest.label) + ' is the biggest cost</strong> at ' + money(t.byCategory[biggest.id]) + ' — it is fixed rent, so the lever is everywhere else.</li>' +
-    '<li><strong>Groceries are the swing category:</strong> ' + money(t.byCategory.groceries) + ' of a ' + money(720) + ' plan, with four days of the month left.</li>' +
-    '<li><strong>' + escapeHtml(cheapest.month) + ' was the cheapest month</strong> (' + money(cheapest.spent) + ') — no car service and no school costs landed that month.</li>' +
-    '<li><strong>Keep the $1,200 payday transfer:</strong> at this rate the emergency fund reaches its ' + money(12000) + ' target in about four and a half months.</li>' +
-    '</ul></section></div>';
-}
-
-// ---- Router ----------------------------------------------------------------
-const ROUTES = {
-  dashboard: renderDashboard,
-  transactions: renderTransactions,
-  budgets: renderBudgets,
-  bills: renderBills,
-  goals: renderGoals,
-  reports: renderReports,
-};
-
-export function render() {
-  const app = document.getElementById('app');
-  const hash = window.location.hash || '#/';
-  const route = hash.replace(/^#\/?/, '').split('/')[0] || 'dashboard';
-  const view = ROUTES[route] || ROUTES.dashboard;
-  markNav(ROUTES[route] ? route : 'dashboard');
-  notice = '';
-  view(app);
-  window.scrollTo(0, 0);
+export function viewReports(S, M) {
+  const history = HISTORY.map((h) => ({
+    ...h,
+    spent: h.month === S.month ? M.spent : h.spent,
+    label: (MONTHS.find((m) => m.id === h.month) || { label: h.month }).label.split(" ")[0],
+  }));
+  const avgSpent = Math.round(history.reduce((s, h) => s + h.spent, 0) / history.length);
+  const topCat = [...M.byCat].sort((a, b) => b.spent - a.spent)[0];
+  const prev = history[history.length - 2];
+  const change = prev ? M.spent - prev.spent : 0;
+  const catRows = [...M.byCat].sort((a, b) => b.spent - a.spent).map(({ cat, spent, budget }) =>
+    `<tr><td>${esc(cat.name)}</td><td class="num">${rupiah(spent)}</td>` +
+    `<td class="num">${rupiah(budget)}</td><td class="num">${pct(spent, M.spent)} dari total</td>` +
+    `<td class="num ${spent > budget ? "neg" : "pos"}">${spent > budget ? `lewat ${rupiah(spent - budget)}` : `sisa ${rupiah(budget - spent)}`}</td></tr>`).join("");
+  return `<div class="page-head"><h2>Laporan ${esc(S.monthLabel)}</h2>` +
+    `<p>Enam bulan terakhir dalam satu pandangan: pemasukan stabil, pengeluaran bergerak. ` +
+    `Agustus paling tinggi karena awal tahun ajaran — SPP, seragam, dan buku.</p></div>` +
+    `<div class="grid grid-4">` +
+    statCard("Rata-rata belanja / bulan", rupiah(avgSpent), "6 bulan terakhir") +
+    statCard("Kategori terbesar", rupiah(topCat.spent), topCat.cat.name, "warn") +
+    statCard("vs Oktober", (change >= 0 ? "+" : "−") + rupiah(Math.abs(change)), change >= 0 ? "lebih boros dari bulan lalu" : "lebih hemat dari bulan lalu", change >= 0 ? "warn" : "good") +
+    statCard("Tabungan 6 bulan", rupiah(history.reduce((s, h) => s + (h.income - h.spent), 0)), "pemasukan dikurangi belanja") +
+    `</div>` +
+    `<section class="card" style="margin-top:1rem"><h3>Pemasukan vs pengeluaran — Juni s.d. November 2026</h3>` +
+    barChart(history.map((h) => ({ label: h.label, income: h.income, spent: h.spent }))) +
+    `<p class="hint">November dihitung dari buku kas (bukan perkiraan): ${rupiahShort(M.spent)} dari ${history.length} transaksi.</p></section>` +
+    `<section class="card" style="margin-top:1rem"><h3>Belanja per kategori — ${esc(S.monthLabel)}</h3>` +
+    `<table><thead><tr><th>Kategori</th><th class="num">Terpakai</th><th class="num">Anggaran</th>` +
+    `<th class="num">Bagian</th><th class="num">Status</th></tr></thead><tbody>${catRows}</tbody></table></section>` +
+    `<section class="card" style="margin-top:1rem"><h3>Yang bisa dilakukan bulan depan</h3>` +
+    `<ul><li><b>${esc(topCat.cat.name)}</b> adalah pos terbesar (${rupiah(topCat.spent)}). ` +
+    `Belanja pasar dua kali seminggu dengan daftar belanja bisa memangkas sekitar Rp 200.000.</li>` +
+    `<li>Makan di luar ${rupiah(M.byCat.find((x) => x.cat.id === "makan").spent)} — masak di rumah ` +
+    `dua malam ekstra per minggu menghemat sekitar Rp 150.000.</li>` +
+    `<li>Dengan sisa ${rupiah(M.remaining)}, pindahkan Rp 1.000.000 ke dana darurat begitu gajian tiba, ` +
+    `sebelum uangnya terpakai untuk hal lain.</li></ul></section>`;
 }

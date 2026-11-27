@@ -1,38 +1,43 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Alder Ledger — Household Budget for the Alder Family</title>
-  <meta name="description" content="Alder Ledger: the Alder household's working budget — November 2026 income, spending by category, bills, savings goals and a monthly report.">
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumbung — Anggaran Rumah Tangga Keluarga Wijaya</title>
+<meta name="description" content="Lumbung: anggaran rumah tangga Keluarga Wijaya — dasbor, catatan transaksi, perencana anggaran 50/30/20, tagihan, tabungan, dan laporan bulanan. Berjalan luring dari berkas statis.">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="brand">Alder <span>Ledger</span></div>
-      <div class="household-tag">The Alder household &middot; Daniel &amp; Priya, Sam &amp; June &middot; November 2026</div>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">🌾</span>
+    <div>
+      <h1>Lumbung</h1>
+      <p class="brand-sub">Anggaran rumah tangga &middot; Keluarga Wijaya, Bandung</p>
     </div>
-    <nav class="site-nav" aria-label="Sections">
-      <a href="#/" data-nav="dashboard">Dashboard</a>
-      <a href="#/transactions" data-nav="transactions">Transactions</a>
-      <a href="#/budgets" data-nav="budgets">Budgets</a>
-      <a href="#/bills" data-nav="bills">Bills</a>
-      <a href="#/goals" data-nav="goals">Savings goals</a>
-      <a href="#/reports" data-nav="reports">Reports</a>
-    </nav>
-  </header>
-  <main class="page" id="app">
-    <noscript>
-      <div class="card">
-        <h1>Alder Ledger needs JavaScript</h1>
-        <p>This budget site is a small program that runs in your browser. Please turn JavaScript on to see the Alder household&rsquo;s November 2026 budget.</p>
-      </div>
-    </noscript>
-  </main>
-  <footer class="site-footer">
-    <p>Alder Ledger is the Alder household&rsquo;s own budget site. Figures are the family&rsquo;s records for November 2026; anything you add or mark paid is saved only in this browser. No data leaves your device.</p>
-  </footer>
-  <script type="module" src="main.js"></script>
+  </div>
+  <div class="month-badge" aria-label="Bulan buku kas">Buku kas &middot; November 2026</div>
+</header>
+
+<nav class="mainnav" aria-label="Navigasi utama">
+  <a href="#/" data-route="dashboard">Dasbor</a>
+  <a href="#/transaksi" data-route="transactions">Transaksi</a>
+  <a href="#/anggaran" data-route="budget">Anggaran</a>
+  <a href="#/tagihan" data-route="bills">Tagihan</a>
+  <a href="#/tabungan" data-route="goals">Tabungan</a>
+  <a href="#/laporan" data-route="reports">Laporan</a>
+</nav>
+
+<main id="view" aria-live="polite"></main>
+
+<footer class="foot">
+  <p>Lumbung menyimpan data di peramban Anda saja (localStorage) — tidak ada data yang
+  dikirim ke mana pun. Semua angka dihitung dari satu buku kas keluarga.
+  <button id="resetDemo" type="button">Atur ulang data demo</button></p>
+  <p class="foot-note">Anggaran November 2026 &middot; Pemasukan Rp 18.500.000 &middot;
+  Dibuat untuk keluarga, oleh keluarga.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
 </body>
 </html>
